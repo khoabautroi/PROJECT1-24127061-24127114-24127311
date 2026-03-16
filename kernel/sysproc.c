@@ -5,7 +5,9 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "procinfo.h"
 
+extern struct proc proc[NPROC];
 uint64
 sys_exit(void)
 {
@@ -90,4 +92,39 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+uint64
+sys_procinfo(void)
+{
+  int pid;
+  uint64 addr;
+  struct proc *p;
+  struct procinfo info;
+
+  argint(0, &pid);   // Lấy PID người dùng nhập (ví dụ: 1 hoặc 2)
+  argaddr(1, &addr); // Lấy địa chỉ struct để copy về
+
+  int found = 0;
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->pid == pid && p->state != UNUSED){ // Phải so sánh p->pid với pid truyền vào
+      // CHỈ COPY KHI TÌM ĐÚNG PID
+      info.pid = p->pid;
+      info.ppid = p->parent ? p->parent->pid : 0;
+      info.state = p->state;
+      info.sz = p->sz;
+      safestrcpy(info.name, p->name, sizeof(p->name));
+      found = 1;
+      release(&p->lock);
+      break;
+    }
+    release(&p->lock);
+  }
+
+  if(!found) return -1; // Nếu không tìm thấy PID (như vụ 100000) thì phải báo lỗi
+
+  if(copyout(myproc()->pagetable, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+
+  return 0;
 }

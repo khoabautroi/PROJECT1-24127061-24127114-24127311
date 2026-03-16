@@ -1,3 +1,4 @@
+#include "kernel/procinfo.h"
 struct stat;
 
 // system calls
@@ -41,3 +42,7 @@ void *memcpy(void *, const void *, uint);
 // umalloc.c
 void* malloc(uint);
 void free(void*);
+
+//procinfo.c
+struct procinfo;
+int procinfo(int, struct procinfo*);
