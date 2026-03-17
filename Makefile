@@ -196,7 +196,7 @@ UPROGS=\
 	$U/_zombie\
 	$U/_xargs\
 	$U/_tree\
-	$U/_tracing\
+	$U/_trace\
 	$U/_procinfo\
 
 
