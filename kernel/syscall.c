@@ -128,6 +128,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_trace]   trace,
 [SYS_procinfo] sys_procinfo,
 };
 
@@ -139,12 +140,15 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
-    p->trapframe->a0 = syscalls[num]();
+    p->trapframe->a0 = syscalls[num](); // Thực thi syscall
+
+    // Kiểm tra mask để in log (Đảm bảo tên biến khớp với proc.h)
+    // Nếu bạn khai báo là tracemask thì sửa lại cho đúng
+    if((p->trace_mask >> num) & 1) { 
+      printf("%d: syscall %s -> %ld\n", p->pid, syscall_names[num], p->trapframe->a0);
+    }
   } else {
-    printf("%d %s: unknown sys call %d\n",
-            p->pid, p->name, num);
+    printf("%d: syscall %s -> %ld\n", p->pid, syscall_names[num], p->trapframe->a0);
     p->trapframe->a0 = -1;
   }
 }
