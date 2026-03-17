@@ -12,7 +12,7 @@ int
 fetchaddr(uint64 addr, uint64 *ip)
 {
   struct proc *p = myproc();
-  if(addr >= p->sz || addr+sizeof(uint64) > p->sz) // both tests needed, in case of overflow
+  if(addr >= p->sz || addr + sizeof(uint64) > p->sz)
     return -1;
   if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
@@ -34,7 +34,7 @@ static uint64
 argraw(int n)
 {
   struct proc *p = myproc();
-  switch (n) {
+  switch(n) {
   case 0:
     return p->trapframe->a0;
   case 1:
@@ -60,8 +60,6 @@ argint(int n, int *ip)
 }
 
 // Retrieve an argument as a pointer.
-// Doesn't check for legality, since
-// copyin/copyout will do that.
 void
 argaddr(int n, uint64 *ip)
 {
@@ -69,8 +67,6 @@ argaddr(int n, uint64 *ip)
 }
 
 // Fetch the nth word-sized system call argument as a null-terminated string.
-// Copies into buf, at most max.
-// Returns string length if OK (including nul), -1 if error.
 int
 argstr(int n, char *buf, int max)
 {
@@ -101,35 +97,62 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
+extern uint64 sys_trace(void);
 extern uint64 sys_procinfo(void);
-
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
-[SYS_fork]    sys_fork,
-[SYS_exit]    sys_exit,
-[SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
-[SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
-[SYS_trace]   trace,
+[SYS_fork]     sys_fork,
+[SYS_exit]     sys_exit,
+[SYS_wait]     sys_wait,
+[SYS_pipe]     sys_pipe,
+[SYS_read]     sys_read,
+[SYS_kill]     sys_kill,
+[SYS_exec]     sys_exec,
+[SYS_fstat]    sys_fstat,
+[SYS_chdir]    sys_chdir,
+[SYS_dup]      sys_dup,
+[SYS_getpid]   sys_getpid,
+[SYS_sbrk]     sys_sbrk,
+[SYS_sleep]    sys_sleep,
+[SYS_uptime]   sys_uptime,
+[SYS_open]     sys_open,
+[SYS_write]    sys_write,
+[SYS_mknod]    sys_mknod,
+[SYS_unlink]   sys_unlink,
+[SYS_link]     sys_link,
+[SYS_mkdir]    sys_mkdir,
+[SYS_close]    sys_close,
+[SYS_trace]    sys_trace,
 [SYS_procinfo] sys_procinfo,
+};
+
+// Array mapping syscall numbers to syscall names.
+static char *syscall_names[] = {
+[SYS_fork]     "fork",
+[SYS_exit]     "exit",
+[SYS_wait]     "wait",
+[SYS_pipe]     "pipe",
+[SYS_read]     "read",
+[SYS_kill]     "kill",
+[SYS_exec]     "exec",
+[SYS_fstat]    "fstat",
+[SYS_chdir]    "chdir",
+[SYS_dup]      "dup",
+[SYS_getpid]   "getpid",
+[SYS_sbrk]     "sbrk",
+[SYS_sleep]    "sleep",
+[SYS_uptime]   "uptime",
+[SYS_open]     "open",
+[SYS_write]    "write",
+[SYS_mknod]    "mknod",
+[SYS_unlink]   "unlink",
+[SYS_link]     "link",
+[SYS_mkdir]    "mkdir",
+[SYS_close]    "close",
+[SYS_trace]    "trace",
+[SYS_procinfo] "procinfo",
 };
 
 void
@@ -140,15 +163,14 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    p->trapframe->a0 = syscalls[num](); // Thực thi syscall
-
-    // Kiểm tra mask để in log (Đảm bảo tên biến khớp với proc.h)
-    // Nếu bạn khai báo là tracemask thì sửa lại cho đúng
-    if((p->trace_mask >> num) & 1) { 
-      printf("%d: syscall %s -> %ld\n", p->pid, syscall_names[num], p->trapframe->a0);
+    p->trapframe->a0 = syscalls[num]();
+    if((p->trace_mask >> num) & 1) {
+      printf("%d: syscall %s -> %ld\n",
+             p->pid, syscall_names[num], p->trapframe->a0);
     }
   } else {
-    printf("%d: syscall %s -> %ld\n", p->pid, syscall_names[num], p->trapframe->a0);
+    printf("%d %s: unknown sys call %d\n",
+           p->pid, p->name, num);
     p->trapframe->a0 = -1;
   }
 }
